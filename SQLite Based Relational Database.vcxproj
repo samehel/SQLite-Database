@@ -131,6 +131,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Commands.h" />
+    <ClInclude Include="Database.h" />
     <ClInclude Include="Includes.h" />
     <ClInclude Include="InputBuffer.h" />
   </ItemGroup>
