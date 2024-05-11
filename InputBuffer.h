@@ -14,6 +14,8 @@
 class InputBuffer {
 private:
 	string cmd;
+	Statement statement;
+
 	StatementType statementType;
 
 	// Create a setter to set our Enum
@@ -36,24 +38,33 @@ public:
 		cout << "Sameh\'s DB >> ";
 		getline(cin, cmd);
 
-		if (cmd == "" || cmd == ". " || cmd.find(' ') != string::npos)
+		if (cmd == "" || cmd == string(PREFIX) + " ")
 			return cout << "Your command cannot contain empty spaces.\n";
-		else if (cmd[0] != '.')
+		else if (cmd[0] != PREFIX[0])
 			return cout << "Did you try " + string(PREFIX) + cmd + "?" << endl;
 			
 		setStatement(cmd);
 	}
-	
 
 	// Create a getter for our private string variable storing the DB command we want to execute
 	string returnCmd() {
-		return cmd;
+		return this->cmd;
 	}
 
-	// Create a getter for our private statement variable
-	StatementType returnStatement() {
-		return statementType;
+	// Create a getter for our private StatementType variable
+	StatementType returnStatementType() {
+		return this->statementType;
 	}
+
+	// Getter & Setter for our Statement
+	Statement& getStatement() {
+		return this->statement;
+	}
+
+	void setStatement(Statement statement) {
+		this->statement = statement;
+	}
+
 
 };
 

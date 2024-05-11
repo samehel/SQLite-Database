@@ -1,11 +1,10 @@
-// Importing our built-in libraries
-#include "Includes.h"
-#include <map>
-
 // Importing our custom classes
 #include "InputBuffer.h"
 #include "Commands.h"
 
+
+void ProcessResult(InputBuffer inputBuffer, Table* table, ExecuteResult res);
+void MainMenu(InputBuffer inputBuffer, Table* table, ExecuteResult res);
 
 /*
  * Main function for the database application.
@@ -15,21 +14,51 @@
  */
 int main() {
 	InputBuffer inputBuffer;
-	while(true) {
+	Table* table = initTable();
+	ExecuteResult res = EXECUTE_FAILURE;
+
+	MainMenu(inputBuffer, table, res);
+}
+
+void MainMenu(InputBuffer inputBuffer, Table* table, ExecuteResult res) {
+
+	while (true) {
 
 		inputBuffer.read_input();
-		
-		switch (inputBuffer.returnStatement()) {
+
+		switch (inputBuffer.returnStatementType()) {
 		case EXIT_STATEMENT:
-			exit(EXIT_SUCCESS);
+			ExitDatabase(table);
 			break;
 		case SELECT_STATEMENT:
-			Select();
+			res = Select(inputBuffer, table);
+			ProcessResult(inputBuffer, table, res);
 			break;
 		case INSERT_STATEMENT:
-			Insert();
+			res = Insert(inputBuffer, table);
+			ProcessResult(inputBuffer, table, res);
 			break;
 		}
 
 	}
+}
+
+void ProcessResult(InputBuffer inputBuffer, Table* table, ExecuteResult res) {
+
+	switch (res) {
+	case EXECUTE_TABLE_FULL:
+		cout << "ERR: The table you are attempting to insert into is full." << endl;
+		break;
+	case EXECUTE_SUCCESS:
+		cout << "Statement executed successfully." << endl;
+		break;
+	case EXECUTE_FAILURE:
+		cout << "Statement failed to execute." << endl;
+		break;
+	case EXECUTE_TABLE_EMPTY:
+		cout << "INFO: The table you are attempting to retrieve from is empty." << endl;
+		break;
+	}
+
+	MainMenu(inputBuffer, table, res);
 }
