@@ -15,7 +15,7 @@ void MainMenu(InputBuffer inputBuffer, Table* table, ExecuteResult res);
 int main() {
 	InputBuffer inputBuffer;
 	Table* table = initTable();
-	ExecuteResult res = EXECUTE_FAILURE;
+	ExecuteResult res = NONE;
 
 	MainMenu(inputBuffer, table, res);
 }
@@ -32,14 +32,13 @@ void MainMenu(InputBuffer inputBuffer, Table* table, ExecuteResult res) {
 			break;
 		case SELECT_STATEMENT:
 			res = Select(inputBuffer, table);
-			ProcessResult(inputBuffer, table, res);
 			break;
 		case INSERT_STATEMENT:
 			res = Insert(inputBuffer, table);
-			ProcessResult(inputBuffer, table, res);
 			break;
 		}
 
+		ProcessResult(inputBuffer, table, res);
 	}
 }
 
@@ -47,16 +46,16 @@ void ProcessResult(InputBuffer inputBuffer, Table* table, ExecuteResult res) {
 
 	switch (res) {
 	case EXECUTE_TABLE_FULL:
-		cout << "ERR: The table you are attempting to insert into is full." << endl;
+		cout << "ERR: The table you are attempting to insert into is full. " << endl;
 		break;
 	case EXECUTE_SUCCESS:
-		cout << "Statement executed successfully." << endl;
+		cout << "Statement executed successfully. " << endl;
 		break;
 	case EXECUTE_FAILURE:
-		cout << "Statement failed to execute." << endl;
+		cout << "Statement failed to execute. " << endl;
 		break;
 	case EXECUTE_TABLE_EMPTY:
-		cout << "INFO: The table you are attempting to retrieve from is empty." << endl;
+		cout << "INFO: The table you are attempting to retrieve from is empty. " << endl;
 		break;
 	}
 

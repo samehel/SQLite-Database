@@ -12,7 +12,6 @@ struct Row {
 	string email;
 };
 
-
 const uint32_t ID_SIZE = SIZE_OF_ATTRIBUTE(Row, id);
 const uint32_t NAME_SIZE = SIZE_OF_ATTRIBUTE(Row, name);
 const uint32_t EMAIL_SIZE = SIZE_OF_ATTRIBUTE(Row, email);
@@ -30,7 +29,8 @@ enum ExecuteResult {
 	EXECUTE_TABLE_FULL,
 	EXECUTE_SUCCESS,
 	EXECUTE_FAILURE,
-	EXECUTE_TABLE_EMPTY
+	EXECUTE_TABLE_EMPTY,
+	NONE
 };
 
 struct Table {

@@ -27,8 +27,18 @@ private:
 		} else if (cmd.substr(0, 7) == string(PREFIX) + "insert") {
 			statementType = INSERT_STATEMENT;
 		} else {
-			return cout << "ERR: The command you are trying to execute does not exist.\n";
+			return cout << "ERR: The command you are trying to execute does not exist. \n";
 		}
+	}
+
+	// A function made just to check whether our string input only contains spaces
+	bool containsOnlySpaces(string str) {
+		for (char c : str) {
+			if (c != ' ') {
+				return false; 
+			}
+		}
+		return true;
 	}
 
 public:
@@ -38,8 +48,8 @@ public:
 		cout << "Sameh\'s DB >> ";
 		getline(cin, cmd);
 
-		if (cmd == "" || cmd == string(PREFIX) + " ")
-			return cout << "Your command cannot contain empty spaces.\n";
+		if (cmd == "" || cmd == string(PREFIX) + " " || containsOnlySpaces(cmd)) 
+			return cout << "Your command cannot contain empty spaces. \n";
 		else if (cmd[0] != PREFIX[0])
 			return cout << "Did you try " + string(PREFIX) + cmd + "?" << endl;
 			
