@@ -44,7 +44,7 @@ private:
 public:
 
 	// function created for reading command input from the user
-	ostream& read_input() {
+	ostream& ReadInput() {
 		cout << "Sameh\'s DB >> ";
 		getline(cin, cmd);
 
@@ -53,6 +53,17 @@ public:
 		else if (cmd[0] != PREFIX[0])
 			return cout << "Did you try " + string(PREFIX) + cmd + "?" << endl;
 			
+		setStatement(cmd);
+	}
+
+	ostream& ReadInput(string cmd) {
+		this->cmd = cmd;
+
+		if (cmd == "" || cmd == string(PREFIX) + " " || containsOnlySpaces(cmd))
+			return cout << "Your command cannot contain empty spaces. \n";
+		else if (cmd[0] != PREFIX[0])
+			return cout << "Did you try " + string(PREFIX) + cmd + "?" << endl;
+
 		setStatement(cmd);
 	}
 
