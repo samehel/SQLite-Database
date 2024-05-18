@@ -3,8 +3,9 @@
 #include "Commands.h"
 #include "TestSuite.h"
 
-void ProcessResult(InputBuffer& inputBuffer, Table* table, ExecuteResult& res);
+void ProcessResult(InputBuffer& inputBuffer, Table* table, ExecuteResult& res, short mode);
 void MainMenu(InputBuffer& inputBuffer, Table* table, ExecuteResult& res);
+void MainMenuDB(InputBuffer& inputBuffer, Table* table, ExecuteResult& res);
 
 /*
  * Main function for the database application.
@@ -15,12 +16,16 @@ void MainMenu(InputBuffer& inputBuffer, Table* table, ExecuteResult& res);
 int main() {
 
 	short choice;
+	InputBuffer inputBuffer;
+	ExecuteResult res = NONE;
 
 	cout << "---------------------------------\n";
 	cout << "------ Relational Database ------\n";
 	cout << "---------------------------------\n";
-	cout << "1. Run the program\n";
-	cout << "2. Run the test cases\n";
+	cout << "1. Run memory based program\n";
+	cout << "2. Run memory based test cases\n";
+	cout << "3. Run disk based program\n";
+	cout << "4. Run disk based test cases\n";
 	cout << "---------------------------------\n";
 
 	while (true) {
@@ -31,10 +36,7 @@ int main() {
 		switch (choice) {
 		case 1:
 		{
-			InputBuffer inputBuffer;
 			Table* table = initTable();
-			ExecuteResult res = NONE;
-
 			MainMenu(inputBuffer, table, res);
 			break;
 		}
@@ -44,14 +46,63 @@ int main() {
 			testSuite.Run();
 			break;
 		}
+		case 3:
+		{
+			string dbNameInput;
+
+			cout << "Enter the name of your database: ";
+			cin >> dbNameInput;
+			cin.ignore();
+
+			if (dbNameInput == "") {
+				cout << "Err: Please provide a database name. \n";
+				exit(EXIT_FAILURE);
+			}
+
+			const int length = dbNameInput.length();
+			char* dbName = new char[length + 1];
+			strcpy_s(dbName, sizeof(dbName), dbNameInput.c_str());
+
+			Table* table = initDB(dbName);
+			MainMenuDB(inputBuffer, table, res);
+			break;
+		}
+		case 4: 
+		{
+
+			break;
+		}
 		default:
 			cout << "Err: Please enter a valid option" << endl;
 		}
 	}
 }
 
-void MainMenu(InputBuffer& inputBuffer, Table* table, ExecuteResult& res) {
+void MainMenuDB(InputBuffer& inputBuffer, Table* table, ExecuteResult& res) {
 
+	while (true) {
+
+		inputBuffer.ReadInput();
+
+		switch (inputBuffer.returnStatementType()) {
+		case EXIT_STATEMENT:
+			ExitDatabaseStorage(table);
+			break;
+		case SELECT_STATEMENT:
+			res = SelectDB(inputBuffer, table);
+			break;
+		case INSERT_STATEMENT:
+			res = InsertDB(inputBuffer, table);
+			break;
+		}
+
+		ProcessResult(inputBuffer, table, res, 1);
+	}
+
+}
+
+void MainMenu(InputBuffer& inputBuffer, Table* table, ExecuteResult& res) {
+	
 	while (true) {
 
 		inputBuffer.ReadInput();
@@ -68,11 +119,11 @@ void MainMenu(InputBuffer& inputBuffer, Table* table, ExecuteResult& res) {
 			break;
 		}
 
-		ProcessResult(inputBuffer, table, res);
+		ProcessResult(inputBuffer, table, res, 0);
 	}
 }
 
-void ProcessResult(InputBuffer& inputBuffer, Table* table, ExecuteResult& res) {
+void ProcessResult(InputBuffer& inputBuffer, Table* table, ExecuteResult& res, short mode) {
 
 	switch (res) {
 	case EXECUTE_TABLE_FULL:
@@ -89,5 +140,8 @@ void ProcessResult(InputBuffer& inputBuffer, Table* table, ExecuteResult& res) {
 		break;
 	}
 
-	MainMenu(inputBuffer, table, res);
+	if (mode == 0)
+		MainMenu(inputBuffer, table, res);
+	else if (mode == 1)
+		MainMenuDB(inputBuffer, table, res);
 }

@@ -9,6 +9,12 @@ void ExitDatabase(Table* table) {
 	exit(EXIT_SUCCESS);
 }
 
+void ExitDatabaseStorage(Table* table) {
+	cout << "Exiting database..." << endl;
+	closeDB(table);
+	exit(EXIT_SUCCESS);
+}
+
 
 ExecuteResult ExtractInsertStatementData(InputBuffer& inputBuffer) {
 
@@ -46,6 +52,28 @@ ExecuteResult Insert(InputBuffer inputBuffer, Table* table) {
 	return EXECUTE_SUCCESS;
 }
 
+ExecuteResult InsertDB(InputBuffer inputBuffer, Table* table) {
+	if (table->numRows >= TABLE_MAX_ROWS)
+		return EXECUTE_TABLE_FULL;
+
+	ExecuteResult res = ExtractInsertStatementData(inputBuffer);
+
+	if (res == EXECUTE_FAILURE)
+		return EXECUTE_FAILURE;
+
+	Row* rowToInsert = &inputBuffer.getStatement().rowToInsert;
+
+	char* slot = RowSlotDB(table, table->numRows);
+
+	serialize_row(rowToInsert, slot);
+
+	flushPager(table->pager, table->numRows / ROWS_PER_PAGE, PAGE_SIZE);
+
+	table->numRows += 1;
+
+	return EXECUTE_SUCCESS;
+}
+
 void printRow(Row* row) {
 	cout << "ID: " + to_string(row->id) + "\nName: " + row->name + "\nEmail: " + row->email + "\n-----\n";
 }
@@ -61,6 +89,23 @@ ExecuteResult Select(InputBuffer inputBuffer, Table* table) {
 
 	for (uint32_t i = 0; i < table->numRows; i++) {
 		deserialize_row(RowSlot(table, i), &row);
+		printRow(&row);
+	}
+
+	return EXECUTE_SUCCESS;
+}
+
+ExecuteResult SelectDB(InputBuffer inputBuffer, Table* table) {
+
+	Row row;
+
+	if (table->numRows <= 0)
+		return EXECUTE_TABLE_EMPTY;
+
+	cout << "Number of rows in table: " << table->numRows << endl;
+
+	for (uint32_t i = 0; i < table->numRows; i++) {
+		deserialize_row(RowSlotDB(table, i), &row);
 		printRow(&row);
 	}
 

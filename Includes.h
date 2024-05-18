@@ -6,6 +6,9 @@
 #include <sstream>
 #include <vector>
 #include <cassert>
+#include <windows.h>
+#include <cstdio>
+#include <cstdlib>
 
 using namespace std;
 

@@ -33,9 +33,16 @@ enum ExecuteResult {
 	NONE
 };
 
+struct Pager {
+	HANDLE fileDescriptor;
+	uint32_t fileLength;
+	void* pages[TABLE_MAX_PAGES];
+};
+
 struct Table {
 	uint32_t numRows;
 	void* pages[TABLE_MAX_PAGES];
+	Pager* pager;
 };
 
 enum StatementType {
@@ -82,13 +89,104 @@ char* RowSlot(Table* table, uint32_t rowNum) {
 	return (char*)page + byteOffset;
 }
 
+void* getPage(Pager* pager, uint32_t pageNum) {
+
+	if (pageNum > TABLE_MAX_PAGES) {
+		cout << "Err: Out of bounds page number\n";
+		exit(EXIT_FAILURE);
+	}
+
+	if (pager->pages[pageNum] == NULL) {
+		void* page = malloc(PAGE_SIZE);
+		uint32_t numPages = pager->fileLength / PAGE_SIZE;
+
+		if (pager->fileLength % PAGE_SIZE)
+			numPages += 1;
+
+		if (pageNum <= numPages) {
+			DWORD filePointer = SetFilePointer(pager->fileDescriptor, pageNum * PAGE_SIZE, NULL, FILE_BEGIN);
+
+			if (filePointer == INVALID_SET_FILE_POINTER) {
+				cout << "Err: Unable to set file pointer\n";
+				exit(EXIT_FAILURE);
+			}
+
+			DWORD bytesRead;
+			BOOL result = ReadFile(pager->fileDescriptor, page, PAGE_SIZE, &bytesRead, NULL);
+			if (!result) {
+				cout << "Unable to read file\n";
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		pager->pages[pageNum] = page;
+	}
+
+	return pager->pages[pageNum];
+}
+
+char* RowSlotDB(Table* table, uint32_t rowNum) {
+	uint32_t pageNum = rowNum / ROWS_PER_PAGE;
+
+	void* page = getPage(table->pager, pageNum);
+
+	uint32_t rowOffset = rowNum % ROWS_PER_PAGE;
+	uint32_t byteOffset = rowOffset * ROW_SIZE;
+
+	// The page can't be added to the byteOffset because it has to be a pointer to a complete object
+	// So we cast it to a pointer to a char then change it back to a void
+	return (char*)page + byteOffset;
+}
+
+
 Table* initTable() {
 	Table* table = (Table*)calloc(1, sizeof(Table));
 
 
 	for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
-		table->pages[i] = NULL;
+		table->pages[i] = nullptr;
 	}
+
+	return table;
+}
+
+Pager* initPager(const char* filename) {
+
+	LPCSTR lpFilename = filename;
+
+	HANDLE hFile = CreateFileA(lpFilename, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	if (hFile == INVALID_HANDLE_VALUE) {
+		cout << "Unable to open file\n";
+		exit(EXIT_FAILURE);
+	}
+
+	DWORD fileLength = GetFileSize(hFile, NULL);
+	if (fileLength == INVALID_FILE_SIZE) {
+		CloseHandle(hFile);
+		cout << "Unable to get file size\n";
+		exit(EXIT_FAILURE);
+	}
+
+	Pager* pager = new Pager;
+	pager->fileDescriptor = hFile;
+	pager->fileLength = fileLength;
+
+	for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
+		pager->pages[i] = nullptr;
+	}
+
+	return pager;
+}
+
+Table* initDB(const char* filename) {
+	Pager* pager = initPager(filename);
+	uint32_t numRows = pager->fileLength / ROW_SIZE;
+
+	Table* table = (Table*)calloc(1, sizeof(Table));
+	table->numRows = 0;
+	table->pager = pager;
+	table->numRows = numRows;
 
 	return table;
 }
@@ -96,6 +194,68 @@ Table* initTable() {
 void freeTable(Table* table) {
 	for (int i = 0; table->pages[i]; i++)
 		free(table->pages[i]);
+	free(table);
+}
+
+void flushPager(Pager* pager, uint32_t pageNum, uint32_t size) {
+	if (pager->pages[pageNum] == NULL) {
+		cout << "Err: Null page cannot be flushed.\n";
+		exit(EXIT_FAILURE);
+	}
+
+	DWORD offset = SetFilePointer(pager->fileDescriptor, pageNum * PAGE_SIZE, NULL, FILE_BEGIN);
+
+	if (offset == INVALID_SET_FILE_POINTER) {
+		cout << "Err: Cannot seek\n";
+		exit(EXIT_FAILURE);
+	}
+
+	DWORD bytesWritten;
+	BOOL result = WriteFile(pager->fileDescriptor, pager->pages[pageNum], size, &bytesWritten, NULL);
+	if (!result) {
+		cout << "Unable to write to file\n";
+		exit(EXIT_FAILURE);
+	}
+}
+
+void closeDB(Table* table) {
+	Pager* pager = table->pager;
+	uint32_t numFullPages = table->numRows / ROWS_PER_PAGE;
+
+	for (uint32_t i = 0; i < numFullPages; i++) {
+		if (pager->pages[i] == NULL)
+			continue;
+
+		flushPager(pager, i, PAGE_SIZE);
+		free(pager->pages[i]);
+		pager->pages[i] = NULL;
+	}
+
+	uint32_t numAdditionalRows = table->numRows % ROWS_PER_PAGE;
+	if (numAdditionalRows > 0) {
+		uint32_t pageNum = numFullPages;
+		if (pager->pages[pageNum] != NULL) {
+			flushPager(pager, pageNum, numAdditionalRows * ROW_SIZE);
+			free(pager->pages[pageNum]);
+			pager->pages[pageNum] = NULL;
+		}
+	}
+
+	BOOL result = CloseHandle(pager->fileDescriptor);
+	if (!result) {
+		cout << "Unable to close file\n";
+		exit(EXIT_FAILURE);
+	}
+
+	for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
+		void* page = pager->pages[i];
+		if (page) {
+			free(page);
+			pager->pages[i] = NULL;
+		}
+	}
+
+	free(pager);
 	free(table);
 }
 
