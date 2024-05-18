@@ -62,8 +62,9 @@ ExecuteResult InsertDB(InputBuffer inputBuffer, Table* table) {
 		return EXECUTE_FAILURE;
 
 	Row* rowToInsert = &inputBuffer.getStatement().rowToInsert;
+	Cursor* cursor = TableEnd(table);
 
-	char* slot = RowSlotDB(table, table->numRows);
+	char* slot = RowSlotDB(cursor);
 
 	serialize_row(rowToInsert, slot);
 
@@ -71,6 +72,7 @@ ExecuteResult InsertDB(InputBuffer inputBuffer, Table* table) {
 
 	table->numRows += 1;
 
+	free(cursor);
 	return EXECUTE_SUCCESS;
 }
 
@@ -96,7 +98,8 @@ ExecuteResult Select(InputBuffer inputBuffer, Table* table) {
 }
 
 ExecuteResult SelectDB(InputBuffer inputBuffer, Table* table) {
-
+	
+	Cursor* cursor = TableStart(table);
 	Row row;
 
 	if (table->numRows <= 0)
@@ -104,11 +107,13 @@ ExecuteResult SelectDB(InputBuffer inputBuffer, Table* table) {
 
 	cout << "Number of rows in table: " << table->numRows << endl;
 
-	for (uint32_t i = 0; i < table->numRows; i++) {
-		deserialize_row(RowSlotDB(table, i), &row);
+	while (!(cursor->endOfTable)) {
+		deserialize_row(RowSlotDB(cursor), &row);
 		printRow(&row);
+		IncrementCursor(cursor);
 	}
 
+	free(cursor);
 	return EXECUTE_SUCCESS;
 }
 

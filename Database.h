@@ -45,6 +45,12 @@ struct Table {
 	Pager* pager;
 };
 
+struct Cursor {
+	Table* table;
+	uint32_t rowNum;
+	bool endOfTable;
+};
+
 enum StatementType {
 	EXIT_STATEMENT,
 	SELECT_STATEMENT,
@@ -125,10 +131,35 @@ void* getPage(Pager* pager, uint32_t pageNum) {
 	return pager->pages[pageNum];
 }
 
-char* RowSlotDB(Table* table, uint32_t rowNum) {
+Cursor* TableStart(Table* table) {
+	Cursor* cursor = (Cursor*)calloc(1, sizeof(Cursor));
+	cursor->table = table;
+	cursor->rowNum = 0;
+	cursor->endOfTable = (table->numRows == 0);
+
+	return cursor;
+}
+
+Cursor* TableEnd(Table* table) {
+	Cursor* cursor = (Cursor*)calloc(1, sizeof(Cursor));
+	cursor->table = table;
+	cursor->rowNum = 0;
+	cursor->endOfTable = true;
+
+	return cursor;
+}
+
+void IncrementCursor(Cursor* cursor) {
+	cursor->rowNum += 1;
+	if (cursor->rowNum >= cursor->table->numRows)
+		cursor->endOfTable = true;
+}
+
+char* RowSlotDB(Cursor* cursor) {
+	uint32_t rowNum = cursor->rowNum;
 	uint32_t pageNum = rowNum / ROWS_PER_PAGE;
 
-	void* page = getPage(table->pager, pageNum);
+	void* page = getPage(cursor->table->pager, pageNum);
 
 	uint32_t rowOffset = rowNum % ROWS_PER_PAGE;
 	uint32_t byteOffset = rowOffset * ROW_SIZE;
@@ -137,7 +168,6 @@ char* RowSlotDB(Table* table, uint32_t rowNum) {
 	// So we cast it to a pointer to a char then change it back to a void
 	return (char*)page + byteOffset;
 }
-
 
 Table* initTable() {
 	Table* table = (Table*)calloc(1, sizeof(Table));
