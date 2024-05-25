@@ -8,6 +8,7 @@
 
 class TestSuite {
 private:
+
     void RunTests(const vector<string>& commands, vector<string>& feedback) {
         Table* table = initTable();
 
@@ -24,9 +25,6 @@ private:
 
             ExecuteResult res = NONE;
             switch (inputBuffer.returnStatementType()) {
-            case EXIT_STATEMENT:
-                ExitDatabase(table);
-                break;
             case SELECT_STATEMENT:
                 res = Select(inputBuffer, table);
                 break;
@@ -59,8 +57,71 @@ private:
 
         freeTable(table);
     }
+    void RunTestsDB(const vector<string>& commands, vector<string>& feedback) {
 
-    // Function to calculate success rate
+        string filename = "testsuitedb";
+
+        long i = 0;
+        while (true) {
+            std::ifstream file(filename);
+            if (file) {
+                filename += i;
+                i++;
+            }
+            else {
+                break;
+            }
+        }
+
+        Table* table = initDB("testsuitedb");
+        feedback.clear();
+
+        for (size_t i = 0; i < commands.size(); ++i) {
+            string command = commands[i];
+            cout << "Test case (DB)" << i + 1 << ": \"" << command << "\"\n";
+
+            // Redirect cout to a stringstream
+            stringstream buffer;
+            streambuf* oldCoutBuffer = cout.rdbuf(buffer.rdbuf());
+
+            InputBuffer inputBuffer;
+            inputBuffer.ReadInput(command);
+
+            ExecuteResult res = NONE;
+            switch (inputBuffer.returnStatementType()) {
+            case SELECT_STATEMENT:
+                res = SelectDB(inputBuffer, table);
+                break;
+            case INSERT_STATEMENT:
+                res = InsertDB(inputBuffer, table);
+                break;
+            }
+
+            switch (res) {
+            case EXECUTE_TABLE_FULL:
+                cout << "ERR: The table is full." << endl;
+                break;
+            case EXECUTE_SUCCESS:
+                cout << "Statement executed successfully." << endl;
+                break;
+            case EXECUTE_FAILURE:
+                cout << "Statement failed to execute." << endl;
+                break;
+            case EXECUTE_TABLE_EMPTY:
+                cout << "INFO: The table you are attempting to retrieve from is empty." << endl;
+                break;
+            }
+
+            // Restore original cout buffer
+            cout.rdbuf(oldCoutBuffer);
+
+            // Store feedback
+            feedback.push_back(buffer.str());
+        }
+
+        closeDB(table);
+    }
+
     void CalculateSuccessRate(const vector<string>& feedback) {
         cout << "\n";
 
@@ -90,8 +151,10 @@ private:
             }
         }
 
-        cout << "Success rate is " << successfulExecutions << "/" << totalExecutions << " (" << (successfulExecutions * 100.0 / totalExecutions) << "%)" << endl;
+        cout << "Success rate is " << successfulExecutions << "/" << totalExecutions << " (" << (successfulExecutions * 100.0 / totalExecutions) << "%)\n" << endl;
     }
+
+
 public:
     void Run() {
         const vector<string> commands = {
@@ -110,11 +173,12 @@ public:
 
         vector<string> feedback;
 
-        // Run tests
         RunTests(commands, feedback);
-
-        // Calculate success rate
         CalculateSuccessRate(feedback);
+
+        RunTestsDB(commands, feedback);
+        CalculateSuccessRate(feedback);
+
     }
 };
 

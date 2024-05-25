@@ -9,6 +9,7 @@
 #include <windows.h>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 
 using namespace std;
 

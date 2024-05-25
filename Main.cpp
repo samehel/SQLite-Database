@@ -23,7 +23,7 @@ int main() {
 	cout << "------ Relational Database ------\n";
 	cout << "---------------------------------\n";
 	cout << "1. Run memory based program\n";
-	cout << "2. Run memory based test cases\n";
+	cout << "2. Run test cases\n";
 	cout << "3. Run disk based program\n";
 	cout << "4. Run disk based test cases\n";
 	cout << "---------------------------------\n";
