@@ -130,10 +130,12 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="B-TREE.h" />
     <ClInclude Include="Commands.h" />
     <ClInclude Include="Database.h" />
     <ClInclude Include="Includes.h" />
     <ClInclude Include="InputBuffer.h" />
+    <ClInclude Include="Node.h" />
     <ClInclude Include="TestSuite.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

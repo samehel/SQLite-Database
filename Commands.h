@@ -2,6 +2,8 @@
 #define COMMANDS
 
 #include "Database.h"
+#include "Node.h"
+#include "B-TREE.h"
 
 void ExitDatabase(Table* table) {
 	cout << "Exiting database..." << endl;
@@ -46,7 +48,7 @@ ExecuteResult Insert(InputBuffer inputBuffer, Table* table) {
 
 	Row* rowToInsert = &inputBuffer.getStatement().rowToInsert;
 	
-	serialize_row(rowToInsert, RowSlot(table, table->numRows));
+	SerializeRow(rowToInsert, RowSlot(table, table->numRows));
 	table->numRows += 1;
 
 	return EXECUTE_SUCCESS;
@@ -66,7 +68,7 @@ ExecuteResult InsertDB(InputBuffer inputBuffer, Table* table) {
 
 	char* slot = RowSlotDB(cursor);
 
-	serialize_row(rowToInsert, slot);
+	SerializeRow(rowToInsert, slot);
 
 	flushPager(table->pager, table->numRows / ROWS_PER_PAGE, PAGE_SIZE);
 
@@ -76,8 +78,55 @@ ExecuteResult InsertDB(InputBuffer inputBuffer, Table* table) {
 	return EXECUTE_SUCCESS;
 }
 
-void printRow(Row* row) {
+ExecuteResult InsertBTree(InputBuffer inputBuffer, Table* table) {
+	
+	void* node = GetPageBTree(table->pager, table->rootPageNum);
+	if ((*LeafNodeNumCells(node) >= LEAF_NODE_MAX_CELLS))
+		return EXECUTE_TABLE_FULL;
+
+	ExecuteResult res = ExtractInsertStatementData(inputBuffer);
+
+	if (res == EXECUTE_FAILURE)
+		return EXECUTE_FAILURE;
+
+	Row* rowToInsert = &inputBuffer.getStatement().rowToInsert;
+	Cursor* cursor = TableEnd(table);
+
+	InsertIntoLeafNode(cursor, rowToInsert->id, rowToInsert);
+
+	free(cursor);
+	return EXECUTE_SUCCESS;
+}
+
+void PrintRow(Row* row) {
 	cout << "ID: " + to_string(row->id) + "\nName: " + row->name + "\nEmail: " + row->email + "\n-----\n";
+}
+
+void MonitorConstants() {
+	cout << "Node Constants:\n\n";
+	cout << "ROW_SIZE: " + to_string(ROW_SIZE) << endl;
+	cout << "COMMON_NODE_HEADER_SIZE: " + to_string(COMMON_NODE_HEADER_SIZE) << endl;
+	cout << "LEAF_NODE_HEADER_SIZE: " + to_string(LEAF_NODE_HEADER_SIZE) << endl;
+	cout << "LEAF_NODE_CELL_SIZE: " + to_string(LEAF_NODE_CELL_SIZE) << endl;
+	cout << "LEAF_NODE_SPACE_FOR_CELLS: " + to_string(LEAF_NODE_SPACE_FOR_CELLS) << endl;
+	cout << "LEAF_NODE_MAX_CELLS: " + to_string(LEAF_NODE_MAX_CELLS) << endl;
+}
+
+void DisplayBTree(void* node) {
+	uint32_t numCells = *LeafNodeNumCells(node);
+	cout << "Leaf (size " + to_string(numCells) + ") \n";
+	for (uint32_t i = 0; i < numCells; i++) {
+		uint32_t key = *LeafNodeKey(node, i);
+		Row row;
+		DeserializeRow(static_cast<char*>(LeafNodeValue(node, i)), &row);
+		cout << " - " + to_string(key) + ": ID = " << row.id << ", Name = " << row.name << ", Email = " << row.email << endl << endl;
+	}
+}
+
+void MonitorAndDisplayBTree(void* node) {
+	MonitorConstants();
+	cout << endl;
+	DisplayBTree(node);
 }
 
 ExecuteResult Select(InputBuffer inputBuffer, Table* table) {
@@ -90,8 +139,8 @@ ExecuteResult Select(InputBuffer inputBuffer, Table* table) {
 	cout << "Number of rows in table: " << table->numRows << endl;
 
 	for (uint32_t i = 0; i < table->numRows; i++) {
-		deserialize_row(RowSlot(table, i), &row);
-		printRow(&row);
+		DeserializeRow(RowSlot(table, i), &row);
+		PrintRow(&row);
 	}
 
 	return EXECUTE_SUCCESS;
@@ -108,8 +157,8 @@ ExecuteResult SelectDB(InputBuffer inputBuffer, Table* table) {
 	cout << "Number of rows in table: " << table->numRows << endl;
 
 	while (!(cursor->endOfTable)) {
-		deserialize_row(RowSlotDB(cursor), &row);
-		printRow(&row);
+		DeserializeRow(RowSlotDB(cursor), &row);
+		PrintRow(&row);
 		IncrementCursor(cursor);
 	}
 

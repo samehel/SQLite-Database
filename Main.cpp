@@ -6,6 +6,7 @@
 void ProcessResult(InputBuffer& inputBuffer, Table* table, ExecuteResult& res, short mode);
 void MainMenu(InputBuffer& inputBuffer, Table* table, ExecuteResult& res);
 void MainMenuDB(InputBuffer& inputBuffer, Table* table, ExecuteResult& res);
+void MainMenuBTree(InputBuffer& inputBuffer, Table* table, ExecuteResult& res);
 
 /*
  * Main function for the database application.
@@ -18,6 +19,7 @@ int main() {
 	short choice;
 	InputBuffer inputBuffer;
 	ExecuteResult res = NONE;
+	Table* BTreeTable = NULL;
 
 	cout << "---------------------------------\n";
 	cout << "------ Relational Database ------\n";
@@ -25,7 +27,9 @@ int main() {
 	cout << "1. Run memory based program\n";
 	cout << "2. Run test cases\n";
 	cout << "3. Run disk based program\n";
-	cout << "4. Run disk based test cases\n";
+	cout << "4. Run B-Tree based program\n";
+	cout << "5. Monitor Constants (Node)\n";
+	cout << "6. Display B-Tree\n";
 	cout << "---------------------------------\n";
 
 	while (true) {
@@ -69,7 +73,39 @@ int main() {
 		}
 		case 4: 
 		{
+			string dbNameInput;
 
+			cout << "Enter the name of your database: ";
+			cin >> dbNameInput;
+			cin.ignore();
+
+			if (dbNameInput == "") {
+				cout << "Err: Please provide a database name. \n";
+				exit(EXIT_FAILURE);
+			}
+
+			const int length = dbNameInput.length();
+			char* dbName = new char[length + 1];
+			strcpy_s(dbName, sizeof(dbName), dbNameInput.c_str());
+
+			Table* table = initBTree(dbName);
+			BTreeTable = table;
+			MainMenuBTree(inputBuffer, table, res);
+			break;
+		}
+		case 5: 
+		{
+			MonitorConstants();
+			break;
+		}
+		case 6:
+		{
+			if (BTreeTable == NULL) {
+				cout << "Err: You need to initialize a B-TREE first" << endl;
+				break;
+			}
+
+			DisplayBTree(GetPageBTree(BTreeTable->pager, 0));
 			break;
 		}
 		default:
@@ -102,7 +138,7 @@ void MainMenuDB(InputBuffer& inputBuffer, Table* table, ExecuteResult& res) {
 }
 
 void MainMenu(InputBuffer& inputBuffer, Table* table, ExecuteResult& res) {
-	
+
 	while (true) {
 
 		inputBuffer.ReadInput();
@@ -120,6 +156,28 @@ void MainMenu(InputBuffer& inputBuffer, Table* table, ExecuteResult& res) {
 		}
 
 		ProcessResult(inputBuffer, table, res, 0);
+	}
+}
+
+void MainMenuBTree(InputBuffer& inputBuffer, Table* table, ExecuteResult& res) {
+
+	while (true) {
+
+		inputBuffer.ReadInput();
+
+		switch (inputBuffer.returnStatementType()) {
+		case EXIT_STATEMENT:
+			ExitDatabase(table);
+			break;
+		case SELECT_STATEMENT:
+			MonitorAndDisplayBTree(GetPageBTree(table->pager, 0));
+			break;
+		case INSERT_STATEMENT:
+			res = InsertBTree(inputBuffer, table);
+			break;
+		}
+
+		ProcessResult(inputBuffer, table, res, 2);
 	}
 }
 
@@ -144,4 +202,6 @@ void ProcessResult(InputBuffer& inputBuffer, Table* table, ExecuteResult& res, s
 		MainMenu(inputBuffer, table, res);
 	else if (mode == 1)
 		MainMenuDB(inputBuffer, table, res);
+	else if (mode == 2)
+		MainMenuBTree(inputBuffer, table, res);
 }

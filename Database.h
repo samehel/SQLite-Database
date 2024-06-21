@@ -37,18 +37,22 @@ struct Pager {
 	HANDLE fileDescriptor;
 	uint32_t fileLength;
 	void* pages[TABLE_MAX_PAGES];
+	uint32_t numPages;
 };
 
 struct Table {
 	uint32_t numRows;
 	void* pages[TABLE_MAX_PAGES];
 	Pager* pager;
+	uint32_t rootPageNum;
 };
 
 struct Cursor {
 	Table* table;
 	uint32_t rowNum;
 	bool endOfTable;
+	uint32_t pageNum;
+	uint32_t cellNum;
 };
 
 enum StatementType {
@@ -63,7 +67,7 @@ struct Statement {
 };
 
 // The destination can't be a pointer to a void because it has to be a pointer to a complete object
-void serialize_row(Row* source, char* destination) {
+void SerializeRow(Row* source, char* destination) {
 	memcpy(destination + ID_OFFSET, &(source->id), ID_SIZE);
 	strncpy_s(destination + NAME_OFFSET, NAME_SIZE, source->name.c_str(), _TRUNCATE);
 	strncpy_s(destination + EMAIL_OFFSET, EMAIL_SIZE, source->email.c_str(), _TRUNCATE);
@@ -73,7 +77,7 @@ void serialize_row(Row* source, char* destination) {
 }
 
 // The source can't be a pointer to a void because it has to be a pointer to a complete object
-void deserialize_row(char* source, Row* destination) {
+void DeserializeRow(char* source, Row* destination) {
 	memcpy(&(destination->id), source + ID_OFFSET, ID_SIZE);
 	destination->name = string(source + NAME_OFFSET);
 	destination->email = string(source + EMAIL_OFFSET);
@@ -143,7 +147,7 @@ Cursor* TableStart(Table* table) {
 Cursor* TableEnd(Table* table) {
 	Cursor* cursor = (Cursor*)calloc(1, sizeof(Cursor));
 	cursor->table = table;
-	cursor->rowNum = 0;
+	cursor->rowNum = table->numRows;
 	cursor->endOfTable = true;
 
 	return cursor;
@@ -214,7 +218,6 @@ Table* initDB(const char* filename) {
 	uint32_t numRows = pager->fileLength / ROW_SIZE;
 
 	Table* table = (Table*)calloc(1, sizeof(Table));
-	table->numRows = 0;
 	table->pager = pager;
 	table->numRows = numRows;
 
